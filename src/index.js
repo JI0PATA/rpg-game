@@ -1,121 +1,80 @@
+import { io } from 'socket.io-client';
 import './index.scss';
 import ClientGame from './client/ClientGame';
 
-document.getElementById('nameForm').addEventListener('submit', (ev) => {
-  ev.preventDefault();
+const normalize = (num) => (num.toString().length > 1 ? num : `0${num}`);
 
-  const name = document.getElementById('name').value.trim();
+export default function getTime(date) {
+  const convertDate = new Date(date);
+  return `${normalize(convertDate.getHours())}:${normalize(convertDate.getMinutes())}:${normalize(
+    convertDate.getSeconds(),
+  )}`;
+}
 
-  ClientGame.init({ tagId: 'game', name });
+window.addEventListener('load', () => {
+  const socket = io('https://jsprochat.herokuapp.com');
 
-  document.getElementById('startGame').style.display = 'none';
+  const $nameForm = document.getElementById('nameForm');
+
+  const $chatWrap = document.querySelector('.chat-wrap');
+  const $form = document.getElementById('form');
+  const $input = document.getElementById('input');
+  const $message = document.querySelector('.message');
+
+  let playerId;
+
+  const submitName = (ev) => {
+    ev.preventDefault();
+
+    const name = document.getElementById('name').value.trim();
+
+    ClientGame.init({ tagId: 'game', name });
+
+    socket.emit('start', name);
+    socket.on('chat connection', (data) => {
+      if (playerId) return;
+      playerId = data.id;
+    });
+
+    $chatWrap.style.display = 'block';
+
+    document.getElementById('startGame').remove();
+    $nameForm.removeEventListener('submit', submitName);
+  };
+
+  $nameForm.addEventListener('submit', submitName);
+
+  $form.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    if ($input.value) {
+      socket.emit('chat message', $input.value);
+      $input.value = '';
+    }
+  });
+
+  socket.on('chat connection', (data) => {
+    $message.insertAdjacentHTML('beforeend', `<p><strong>${getTime(data.time)}</strong> - ${data.msg}</p>`);
+  });
+
+  socket.on('chat disconnect', (data) => {
+    $message.insertAdjacentHTML('beforeend', `<p><strong>${getTime(data.time)}</strong> - ${data.msg}</p>`);
+  });
+
+  socket.on('chat message', (data) => {
+    let style = '';
+
+    if (data.id === playerId) {
+      style = 'background: darkred; color: #fff;';
+    }
+
+    $message.insertAdjacentHTML(
+      'beforeend',
+      `<p><strong style="${style}">(${getTime(data.time)}) ${data.name}</strong> - ${data.msg}</p>`,
+    );
+  });
+
+  socket.on('chat online', (data) => {
+    $message.insertAdjacentHTML('beforeend', `<p>Сейчас онлайн - ${data.online}</p>`);
+  });
 });
-
-// window.addEventListener('load', () => {
-// ClientGame.init({ tagId: 'game' });
-// });
-
-//
-// import SenseiWalk from './assets/Male-3-Walk.png';
-// import terrainAtlas from './assets/terrain.png';
-// import worldCfg from './configs/world.json';
-// import sprites from './configs/sprites';
-//
-// const canvas = document.getElementById('game');
-// const ctx = canvas.getContext('2d');
-//
-// const spriteW = 48;
-// const spriteH = 48;
-//
-// const terrain = document.createElement('img');
-// terrain.src = terrainAtlas;
-//
-// terrain.addEventListener('load', (_) => {
-//   const { map } = worldCfg;
-//
-//   map.forEach((cfgRow, y) => {
-//     cfgRow.forEach((cfgCell, x) => {
-//       const [sX, sY, sW, sH] = sprites.terrain[cfgCell[0]].frames[0];
-//       ctx.drawImage(terrain, sX, sY, sW, sH, x * spriteW, y * spriteH, spriteW, spriteH);
-//     });
-//   });
-// });
-//
-// const shots = 3;
-// let cycle = 0;
-// const initialPositionHero = {
-//   x: 300 - spriteW / 2,
-//   y: 300 - spriteH / 2,
-// };
-// const pressedKeys = {
-//   bottom: false,
-//   right: false,
-//   left: false,
-//   top: false,
-// };
-//
-// function changeKeyPressed(e, state) {
-//   if (['Down', 'ArrowDown'].includes(e.key)) {
-//     pressedKeys.bottom = state;
-//   } else if (['Right', 'ArrowRight'].includes(e.key)) {
-//     pressedKeys.right = state;
-//   } else if (['Left', 'ArrowLeft'].includes(e.key)) {
-//     pressedKeys.left = state;
-//   } else if (['Up', 'ArrowUp'].includes(e.key)) {
-//     pressedKeys.top = state;
-//   }
-// }
-//
-// function keyDownHandler(e) {
-//   changeKeyPressed(e, true);
-// }
-//
-// function keyUpHandler(e) {
-//   changeKeyPressed(e, false);
-// }
-//
-// document.addEventListener('keydown', keyDownHandler);
-// document.addEventListener('keyup', keyUpHandler);
-//
-// const img = document.createElement('img');
-// img.src = SenseiWalk;
-//
-// let pY = initialPositionHero.y;
-// let pX = initialPositionHero.x;
-// let direction = 0;
-//
-// img.addEventListener('load', () => {
-//   window.requestAnimationFrame(walk)
-// });
-//
-// function walk(timestamp) {
-//   if (!(pY < 0 || pY > 600 - spriteH || pX < 0 || pX > 600 - spriteW)) {
-//     if (pressedKeys.bottom) {
-//       pY += 10;
-//       direction = 0;
-//     } else if (pressedKeys.top) {
-//       pY -= 10;
-//       direction = 3;
-//     } else if (pressedKeys.right) {
-//       pX += 10;
-//       direction = 2;
-//     } else if (pressedKeys.left) {
-//       pX -= 10;
-//       direction = 1;
-//     }
-//   } else {
-//     if (pX < 0) pX = 0;
-//     else if (pX > 600 - spriteW) pX = 600 - spriteW;
-//     if (pY < 0) pY = 0;
-//     else if (pY > 600 - spriteH) pY = 600 - spriteH;
-//   }
-//
-//   if (pressedKeys.bottom || pressedKeys.top || pressedKeys.right || pressedKeys.left) {
-//     cycle = (cycle + 1) % shots;
-//   }
-//
-//   ctx.clearRect(0, 0, 600, 600);
-//   ctx.drawImage(img, cycle * spriteW, direction * 48, spriteW, spriteH, pX, pY, 48, 48);
-//
-//   window.requestAnimationFrame(walk)
-// }
