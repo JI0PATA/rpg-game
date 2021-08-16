@@ -1,9 +1,19 @@
 import './index.scss';
 import ClientGame from './client/ClientGame';
 
-window.addEventListener('load', () => {
-  ClientGame.init({ tagId: 'game' });
+document.getElementById('nameForm').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+
+  const name = document.getElementById('name').value.trim();
+
+  ClientGame.init({ tagId: 'game', name });
+
+  document.getElementById('startGame').style.display = 'none';
 });
+
+// window.addEventListener('load', () => {
+// ClientGame.init({ tagId: 'game' });
+// });
 
 //
 // import SenseiWalk from './assets/Male-3-Walk.png';

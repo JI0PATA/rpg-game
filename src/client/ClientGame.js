@@ -13,6 +13,8 @@ class ClientGame {
     });
 
     this.engine = this.createEngine();
+    this.engine.playerName = cfg.name;
+
     this.map = this.createWorld();
 
     this.initEngine();
